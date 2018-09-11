@@ -10,6 +10,7 @@
         "start": "yarn && node main"
     },
     "dependencies": {
+        "commander": "^2.18.0",
         "sqlite-sync": "^0.3.8",
         "walk-sync": "^0.3.3"
     },

@@ -1,12 +1,13 @@
+#!/usr/bin/env node
+
 /* eslint-disable no-console */
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const program = require('commander');
 const sqlite = require('sqlite-sync');
 const walkSync = require('walk-sync');
-
-const savepath = 'saved.json';
 
 /**
  * Finds JW app databases.
@@ -19,6 +20,17 @@ function findDatabases() {
     globs: ['**/WatchtowerBibleandTractSo.JWLibrarySignLanguage*/**/userData.db'],
   });
   return paths.map(item => path.join(home, item));
+}
+
+/**
+ * Finds the JW database. Returns error if it can't find a single database.
+ */
+function findDatabase() {
+  const paths = findDatabases();
+  if (paths.length == 1) return paths[0];
+  if (paths.length) console.error('More than one JW App database found!');
+  else console.error('No JW App database was found.');
+  return '';
 }
 
 /**
@@ -87,18 +99,50 @@ function exportPlaylist(dbPath, tagId) {
   return saved;
 }
 
-const paths = findDatabases();
-if (paths.length == 1) {
-  const dbPath = paths[0];
-  console.log(`Using database: ${dbPath}`);
-  const playlists = findPlaylists(dbPath);
-  const playlist = playlists.length ? playlists[0] : { TagId: 0, Name: 'Not Found' };
-  console.log(`Exporting playlist #${playlist.TagId}: "${playlist.Name}".`);
-  const data = exportPlaylist(dbPath, playlist.TagId);
-  fs.writeFileSync(savepath, JSON.stringify(data));
-  console.log(`Saved data at ${savepath}.`);
-} else if (paths.length) {
-  console.log('More than one JW App database found!');
-} else {
-  console.log('No JW App database was found.');
-}
+program
+  .command('list')
+  .alias('ls')
+  .description('List playlists')
+  .action(() => {
+    const dbPath = findDatabase();
+    if (dbPath.length) {
+      const playlists = findPlaylists(dbPath);
+      console.log(`Found ${playlists.length} playlist(s).`);
+      if (playlists.length) {
+        console.log('\nID\tName');
+        playlists.forEach((item) => {
+          console.log(`${item.TagId}\t${item.Name}`);
+        });
+        console.log('');
+      }
+    }
+  });
+
+program
+  .command('export')
+  .alias('exp')
+  .description('Export playlist.')
+  .option('-p, --playlist <id>', 'Playlist name or number to save')
+  .option('-f, --file <path>', 'File to save to')
+  .action((options) => {
+    const dbPath = findDatabase();
+    if (!dbPath.length) return;
+    const playlists = findPlaylists(dbPath);
+    let playlist = 0;
+    if (options.playlist) {
+      playlist = playlists.find(
+        item => options.playlist == item.TagId
+          || options.playlist.toLowerCase() == item.Name.toLowerCase(),
+      );
+    }
+    if (!playlist) {
+      console.error('Could not find your playlist.');
+      return;
+    }
+    const data = exportPlaylist(dbPath, playlist.TagId);
+    const dataJson = JSON.stringify(data);
+    if (options.file) fs.writeFileSync(options.file, dataJson);
+    else console.log(dataJson);
+  });
+
+program.parse(process.argv);
