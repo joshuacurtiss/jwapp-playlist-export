@@ -1,11 +1,25 @@
 /* eslint-disable no-console */
 
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const sqlite = require('sqlite-sync');
+const walkSync = require('walk-sync');
 
 const savepath = 'saved.json';
-const path = '/Users/josh/OneDrive/Documents/WatchtowerBibleandTractSo.JWLibrarySignLanguage_5rz59y55nfz3e/LocalState/UserData/userData.db';
-const id = 2;
+
+/**
+ * Finds JW app databases.
+ */
+function findDatabases() {
+  const home = process.env.APPDATA
+    || (process.platform == 'darwin' ? `${os.homedir()}/Library/Preferences` : '/var/local');
+  const paths = walkSync(home, {
+    basedir: home,
+    globs: ['**/WatchtowerBibleandTractSo.JWLibrarySignLanguage*/**/userData.db'],
+  });
+  return paths.map(item => path.join(home, item));
+}
 
 /**
  * Will load the data for a given playlist in a given database. Returns object with data.
@@ -24,6 +38,7 @@ function exportPlaylist(dbPath, tagId) {
     Tag: [],
     TagMap: [],
   };
+  console.log(`Opening: ${dbPath}`);
   sqlite.connect(dbPath);
   sqlite.run(`select * from Tag where TagId=${tagId}`, (res) => {
     if (res.error) console.error(res.error);
@@ -59,6 +74,17 @@ function exportPlaylist(dbPath, tagId) {
   return saved;
 }
 
-const data = exportPlaylist(path, id);
-fs.writeFileSync(savepath, JSON.stringify(data));
-console.log('Saved data.\n\n');
+const id = 2;
+const paths = findDatabases();
+let dbPath = '';
+
+if (paths.length == 1) {
+  dbPath = paths[0];
+  const data = exportPlaylist(dbPath, id);
+  fs.writeFileSync(savepath, JSON.stringify(data));
+  console.log(`Saved data at ${savepath}.`);
+} else if (paths.length) {
+  console.log('More than one JW App database found!');
+} else {
+  console.log('No JW App database was found.');
+}
