@@ -14,7 +14,7 @@ const walkSync = require('walk-sync');
  */
 function findDatabases() {
   const home = process.env.APPDATA
-    || (process.platform == 'darwin' ? `${os.homedir()}/Library/Preferences` : '/var/local');
+    || (process.platform === 'darwin' ? `${os.homedir()}/Library/Preferences` : '/var/local');
   const paths = walkSync(home, {
     basedir: home,
     globs: ['**/WatchtowerBibleandTractSo.JWLibrarySignLanguage*/**/userData.db'],
@@ -27,7 +27,7 @@ function findDatabases() {
  */
 function findDatabase() {
   const paths = findDatabases();
-  if (paths.length == 1) return paths[0];
+  if (paths.length === 1) return paths[0];
   if (paths.length) console.error('More than one JW App database found!');
   else console.error('No JW App database was found.');
   return '';
@@ -131,8 +131,8 @@ program
     let playlist = 0;
     if (options.playlist) {
       playlist = playlists.find(
-        item => options.playlist == item.TagId
-          || options.playlist.toLowerCase() == item.Name.toLowerCase(),
+        item => options.playlist === item.TagId
+        || options.playlist.toLowerCase() === item.Name.toLowerCase(),
       );
     }
     if (!playlist) {
