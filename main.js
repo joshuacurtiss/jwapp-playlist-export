@@ -87,14 +87,14 @@ function exportPlaylist(dbPath, tagId) {
   return saved;
 }
 
-const id = 2;
 const paths = findDatabases();
-let dbPath = '';
-
 if (paths.length == 1) {
-  dbPath = paths[0];
+  const dbPath = paths[0];
   console.log(`Using database: ${dbPath}`);
-  const data = exportPlaylist(dbPath, id);
+  const playlists = findPlaylists(dbPath);
+  const playlist = playlists.length ? playlists[0] : { TagId: 0, Name: 'Not Found' };
+  console.log(`Exporting playlist #${playlist.TagId}: "${playlist.Name}".`);
+  const data = exportPlaylist(dbPath, playlist.TagId);
   fs.writeFileSync(savepath, JSON.stringify(data));
   console.log(`Saved data at ${savepath}.`);
 } else if (paths.length) {
