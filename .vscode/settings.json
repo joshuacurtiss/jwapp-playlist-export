@@ -1,0 +1,11 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "prettier.eslintIntegration": true,
+    "prettier.bracketSpacing": false,
+    "prettier.singleQuote": true,
+    "prettier.printWidth": 120,
+    "prettier.tabWidth": 4,
+    "editor.formatOnSave": true,
+    "eslint.autoFixOnSave": true,
+    "git.ignoreLimitWarning": true
+}

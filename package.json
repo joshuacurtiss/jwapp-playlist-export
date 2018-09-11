@@ -1,0 +1,20 @@
+{
+    "name": "jwapp-playlist-export",
+    "version": "0.1.0",
+    "description": "Exports and imports playlists in the JW app.",
+    "main": "main.js",
+    "author": "Josh Curtiss <josh@curtiss.me>",
+    "license": "MIT",
+    "private": true,
+    "scripts": {
+        "start": "node main"
+    },
+    "dependencies": {
+        "sqlite-sync": "^0.3.8"
+    },
+    "devDependencies": {
+        "eslint": "^5.5.0",
+        "eslint-config-airbnb-base": "^13.1.0",
+        "eslint-plugin-import": "^2.14.0"
+    }
+}
