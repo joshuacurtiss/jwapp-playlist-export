@@ -130,7 +130,8 @@ program
     let playlist = 0;
     if (options.playlist) {
       playlist = playlists.find(
-        item => options.playlist === item.TagId
+        // eslint-disable-next-line eqeqeq
+        item => options.playlist == item.TagId
         || options.playlist.toLowerCase() === item.Name.toLowerCase(),
       );
     }
