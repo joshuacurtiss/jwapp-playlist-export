@@ -13,8 +13,7 @@ const walkSync = require('walk-sync');
  * Finds JW app databases.
  */
 function findDatabases() {
-  const home = process.env.APPDATA
-    || (process.platform === 'darwin' ? `${os.homedir()}/Library/Preferences` : '/var/local');
+  const home = process.platform === 'darwin' ? `${os.homedir()}/Library/Preferences` : path.join(process.env.APPDATA, '..', 'Local', 'Packages');
   const paths = walkSync(home, {
     basedir: home,
     globs: ['**/WatchtowerBibleandTractSo.JWLibrarySignLanguage*/**/userData.db'],
