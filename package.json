@@ -7,7 +7,7 @@
     "license": "MIT",
     "private": true,
     "scripts": {
-        "start": "node main"
+        "start": "yarn && node main"
     },
     "dependencies": {
         "sqlite-sync": "^0.3.8"
