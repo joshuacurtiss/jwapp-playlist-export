@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-console */
+/* eslint-disable no-console,max-len,eqeqeq,no-param-reassign */
 
 const fs = require('fs');
 const os = require('os');
@@ -13,7 +13,9 @@ const walkSync = require('walk-sync');
  * Finds JW app databases.
  */
 function findDatabases() {
-  const home = process.platform === 'darwin' ? `${os.homedir()}/Library/Preferences` : path.join(process.env.APPDATA, '..', 'Local', 'Packages');
+  const home = process.platform === 'darwin'
+    ? `${os.homedir()}/Library/Preferences`
+    : path.join(process.env.APPDATA, '..', 'Local', 'Packages');
   const paths = walkSync(home, {
     basedir: home,
     globs: ['**/WatchtowerBibleandTractSo.JWLibrarySignLanguage*/**/userData.db'],
@@ -43,7 +45,81 @@ function findPlaylists(dbPath) {
     if (res.error) console.error(res.error);
     playlists = res;
   });
+  sqlite.close();
   return playlists;
+}
+
+/**
+ * Will load JSON and import into a given database. Returns true/false for success.
+ * @param {string} dbPath The path to the database.
+ * @param {string} json The json to be deserialized and loaded.
+ * @returns {boolean} Whether successful or not.
+ */
+function importPlaylist(dbPath, json) {
+  const data = JSON.parse(json);
+  const success = true;
+  sqlite.connect(dbPath);
+  // Tag -> Update TagId in TagMap
+  const tag = data.Tag[0];
+  if (tag) {
+    const obj = Object.assign({}, tag);
+    delete obj.TagId;
+    const newId = sqlite.insert('Tag', obj);
+    tag.TagId = newId;
+    data.TagMap.forEach((item) => {
+      item.TagId = newId;
+    });
+  }
+  // Location -> Update LocationId in PlaylistMedia, TagMap
+  data.Location.forEach((location) => {
+    const oldId = location.LocationId;
+    const obj = Object.assign({}, location);
+    delete obj.LocationId;
+    const newId = sqlite.insert('Location', obj);
+    data.PlaylistMedia.forEach((item) => {
+      if (item.LocationId == oldId) item.LocationId = newId;
+    });
+    data.TagMap.forEach((item) => {
+      if (item.LocationId == oldId) item.LocationId = newId;
+    });
+  });
+  // PlaylistMedia -> Update PlaylistMediaId in PlaylistItem
+  data.PlaylistMedia.forEach((playlistmedia) => {
+    const oldId = playlistmedia.PlaylistMediaId;
+    const obj = Object.assign({}, playlistmedia);
+    delete obj.PlaylistMediaId;
+    const newId = sqlite.insert('PlaylistMedia', obj);
+    data.PlaylistItem.forEach((item) => {
+      if (item.PlaylistMediaId == oldId) item.PlaylistMediaId = newId;
+    });
+  });
+  // PlaylistItem -> Update PlaylistItemId in PlaylistItemChild, TagMap
+  data.PlaylistItem.forEach((playlistitem) => {
+    const oldId = playlistitem.PlaylistItemId;
+    const obj = Object.assign({}, playlistitem);
+    delete obj.PlaylistItemId;
+    const newId = sqlite.insert('PlaylistItem', obj);
+    data.PlaylistItemChild.forEach((item) => {
+      if (item.PlaylistItemId == oldId) item.PlaylistItemId = newId;
+    });
+    data.TagMap.forEach((item) => {
+      if (item.PlaylistItemId == oldId) item.PlaylistItemId = newId;
+    });
+  });
+  // TagMap
+  data.TagMap.forEach((tagmap) => {
+    const obj = Object.assign({}, tagmap);
+    delete obj.TagMapId;
+    sqlite.insert('TagMap', obj);
+  });
+  // PlaylistItemChild
+  data.PlaylistItemChild.forEach((playlistitemchild) => {
+    const obj = Object.assign({}, playlistitemchild);
+    delete obj.PlaylistItemChildId;
+    sqlite.insert('PlaylistItemChild', obj);
+  });
+  sqlite.close();
+  return success;
 }
 
 /**
@@ -132,7 +208,7 @@ program
       playlist = playlists.find(
         // eslint-disable-next-line eqeqeq
         item => options.playlist == item.TagId
-        || options.playlist.toLowerCase() === item.Name.toLowerCase(),
+          || options.playlist.toLowerCase() === item.Name.toLowerCase(),
       );
     }
     if (!playlist) {
@@ -143,6 +219,27 @@ program
     const dataJson = JSON.stringify(data);
     if (options.file) fs.writeFileSync(options.file, dataJson);
     else console.log(dataJson);
+  });
+
+program
+  .command('import')
+  .alias('imp')
+  .description('Import playlist.')
+  .option('-f, --file <path>', 'File with playlist to import')
+  .action((options) => {
+    const dbPath = findDatabase();
+    if (!dbPath.length) return;
+    if (!fs.existsSync(options.file)) {
+      console.error('File does not exist!');
+      return;
+    }
+    const json = fs.readFileSync(options.file, 'utf8');
+    if (json.length) {
+      const success = importPlaylist(dbPath, json);
+      console.log(success ? 'Successfully imported!' : 'There was a problem.');
+    } else {
+      console.log('File did not have any data!');
+    }
   });
 
 program.parse(process.argv);
