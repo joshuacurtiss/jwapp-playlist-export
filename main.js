@@ -22,6 +22,20 @@ function findDatabases() {
 }
 
 /**
+ * Finds the playlists in a given database.
+ * @param {string} dbPath The path to the database.
+ */
+function findPlaylists(dbPath) {
+  let playlists = [];
+  sqlite.connect(dbPath);
+  sqlite.run('select TagId, Name from Tag where Type=2', (res) => {
+    if (res.error) console.error(res.error);
+    playlists = res;
+  });
+  return playlists;
+}
+
+/**
  * Will load the data for a given playlist in a given database. Returns object with data.
  * @param {string} dbPath The path to the database.
  * @param {number} tagId The tag ID, or basically, the playlist ID.
