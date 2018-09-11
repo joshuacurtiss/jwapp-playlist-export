@@ -52,7 +52,6 @@ function exportPlaylist(dbPath, tagId) {
     Tag: [],
     TagMap: [],
   };
-  console.log(`Opening: ${dbPath}`);
   sqlite.connect(dbPath);
   sqlite.run(`select * from Tag where TagId=${tagId}`, (res) => {
     if (res.error) console.error(res.error);
@@ -94,6 +93,7 @@ let dbPath = '';
 
 if (paths.length == 1) {
   dbPath = paths[0];
+  console.log(`Using database: ${dbPath}`);
   const data = exportPlaylist(dbPath, id);
   fs.writeFileSync(savepath, JSON.stringify(data));
   console.log(`Saved data at ${savepath}.`);
