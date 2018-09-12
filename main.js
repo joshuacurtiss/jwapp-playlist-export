@@ -49,6 +49,30 @@ function findPlaylists(dbPath) {
   return playlists;
 }
 
+function sanitizePlaylistName(dbPath, name) {
+  const playlists = findPlaylists(dbPath);
+  const playlistNames = playlists.map(item => item.Name);
+  let newname = name;
+  while (playlistNames.includes(newname)) {
+    const words = newname.split(' ');
+    let inc = words.pop();
+    if (!/^\d+$/.test(inc)) {
+      words.push(inc);
+      inc = 2;
+    } else {
+      inc = Number(inc) + 1;
+    }
+    words.push(inc);
+    newname = words.join(' ');
+  }
+  return newname;
+}
+
+function isError(desc, item) {
+  if (typeof item === 'object') console.error(`While trying to save ${desc}:\n${item.error.toString().split('\n')[0]}`);
+  return typeof item === 'object';
+}
+
 /**
  * Will load JSON and import into a given database. Returns true/false for success.
  * @param {string} dbPath The path to the database.
@@ -57,14 +81,15 @@ function findPlaylists(dbPath) {
  */
 function importPlaylist(dbPath, json) {
   const data = JSON.parse(json);
-  const success = true;
+  const tag = data.Tag[0];
+  tag.Name = sanitizePlaylistName(dbPath, tag.Name);
   sqlite.connect(dbPath);
   // Tag -> Update TagId in TagMap
-  const tag = data.Tag[0];
   if (tag) {
     const obj = Object.assign({}, tag);
     delete obj.TagId;
     const newId = sqlite.insert('Tag', obj);
+    if (isError('Tag', newId)) return false;
     tag.TagId = newId;
     data.TagMap.forEach((item) => {
       item.TagId = newId;
@@ -75,7 +100,30 @@ function importPlaylist(dbPath, json) {
     const oldId = location.LocationId;
     const obj = Object.assign({}, location);
     delete obj.LocationId;
-    const newId = sqlite.insert('Location', obj);
+    // First, check if an idential Location record exists.
+    const chk = sqlite.run(
+      `
+        select LocationId
+        from Location
+        where BookNumber ${obj.BookNumber === null ? 'is null' : `=${obj.BookNumber}`} and
+        ChapterNumber ${obj.ChapterNumber === null ? 'is null' : `=${obj.ChapterNumber}`} and
+        DocumentId ${obj.DocumentId === null ? 'is null' : `=${obj.DocumentId}`} and
+        Track ${obj.Track === null ? 'is null' : `=${obj.Track}`} and
+        IssueTagNumber ${obj.IssueTagNumber === null ? 'is null' : `=${obj.IssueTagNumber}`} and
+        KeySymbol ${obj.KeySymbol === null ? 'is null' : `='${obj.KeySymbol}'`} and
+        MepsLanguage ${obj.MepsLanguage === null ? 'is null' : `=${obj.MepsLanguage}`} and
+        Type ${obj.Type === null ? 'is null' : `=${obj.Type}`}
+      `,
+    );
+    const chkresult = chk[0].values[0];
+    // If the record exists, just use its ID. Otherwise, insert new rec.
+    let newId = 0;
+    if (chkresult.length) {
+      newId = chkresult[0]; // eslint-disable-line prefer-destructuring
+    } else {
+      newId = sqlite.insert('Location', obj);
+    }
+    if (isError('Location', newId)) return;
     data.PlaylistMedia.forEach((item) => {
       if (item.LocationId == oldId) item.LocationId = newId;
     });
@@ -88,7 +136,24 @@ function importPlaylist(dbPath, json) {
     const oldId = playlistmedia.PlaylistMediaId;
     const obj = Object.assign({}, playlistmedia);
     delete obj.PlaylistMediaId;
-    const newId = sqlite.insert('PlaylistMedia', obj);
+    // First, check if an idential Location record exists.
+    const chk = sqlite.run(
+      `
+        select PlaylistMediaId
+        from PlaylistMedia
+        where MediaType ${obj.MediaType === null ? 'is null' : `=${obj.MediaType}`} and
+        LocationId ${obj.LocationId === null ? 'is null' : `=${obj.LocationId}`}
+      `,
+    );
+    const chkresult = chk[0].values[0];
+    // If the record exists, just use its ID. Otherwise, insert new rec.
+    let newId = 0;
+    if (chkresult.length) {
+      newId = chkresult[0]; // eslint-disable-line prefer-destructuring
+    } else {
+      newId = sqlite.insert('PlaylistMedia', obj);
+    }
+    if (isError('PlaylistMedia', newId)) return;
     data.PlaylistItem.forEach((item) => {
       if (item.PlaylistMediaId == oldId) item.PlaylistMediaId = newId;
     });
@@ -99,6 +164,7 @@ function importPlaylist(dbPath, json) {
     const obj = Object.assign({}, playlistitem);
     delete obj.PlaylistItemId;
     const newId = sqlite.insert('PlaylistItem', obj);
+    if (isError('PlaylistItem', newId)) return;
     data.PlaylistItemChild.forEach((item) => {
       if (item.PlaylistItemId == oldId) item.PlaylistItemId = newId;
     });
@@ -110,16 +176,18 @@ function importPlaylist(dbPath, json) {
   data.TagMap.forEach((tagmap) => {
     const obj = Object.assign({}, tagmap);
     delete obj.TagMapId;
-    sqlite.insert('TagMap', obj);
+    const newId = sqlite.insert('TagMap', obj);
+    isError('TagMap', newId);
   });
   // PlaylistItemChild
   data.PlaylistItemChild.forEach((playlistitemchild) => {
     const obj = Object.assign({}, playlistitemchild);
     delete obj.PlaylistItemChildId;
-    sqlite.insert('PlaylistItemChild', obj);
+    const newId = sqlite.insert('PlaylistItemChild', obj);
+    isError('PlaylistItemChild', newId);
   });
   sqlite.close();
-  return success;
+  return true;
 }
 
 /**
