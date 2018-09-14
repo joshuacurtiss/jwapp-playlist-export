@@ -41,6 +41,7 @@ function findDatabase() {
 function findPlaylists(dbPath) {
   let playlists = [];
   sqlite.connect(dbPath);
+  sqlite.run('PRAGMA schema.wal_checkpoint');
   sqlite.run('select TagId, Name from Tag where Type=2', (res) => {
     if (res.error) console.error(res.error);
     playlists = res;
@@ -186,6 +187,7 @@ function importPlaylist(dbPath, json) {
     const newId = sqlite.insert('PlaylistItemChild', obj);
     isError('PlaylistItemChild', newId);
   });
+  sqlite.run('PRAGMA schema.wal_checkpoint');
   sqlite.close();
   return true;
 }
@@ -208,6 +210,7 @@ function exportPlaylist(dbPath, tagId) {
     TagMap: [],
   };
   sqlite.connect(dbPath);
+  sqlite.run('PRAGMA schema.wal_checkpoint');
   sqlite.run(`select * from Tag where TagId=${tagId}`, (res) => {
     if (res.error) console.error(res.error);
     saved.Tag = res;
