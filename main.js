@@ -84,8 +84,6 @@ function importPlaylist(dbPath, json) {
   const tag = data.Tag[0];
   tag.Name = sanitizePlaylistName(dbPath, tag.Name);
   sqlite.connect(dbPath);
-  sqlite.run('PRAGMA journal_mode=OFF');
-  sqlite.run('PRAGMA locking_mode=EXCLUSIVE');
   // Tag -> Update TagId in TagMap
   if (tag) {
     const obj = Object.assign({}, tag);
@@ -188,8 +186,6 @@ function importPlaylist(dbPath, json) {
     const newId = sqlite.insert('PlaylistItemChild', obj);
     isError('PlaylistItemChild', newId);
   });
-  sqlite.run('PRAGMA journal_mode=WAL');
-  sqlite.run('PRAGMA locking_mode=NORMAL');
   sqlite.close();
   return true;
 }
